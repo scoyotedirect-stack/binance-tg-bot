@@ -79,6 +79,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         price_change = float(ticker["priceChangePercent"])
         natr = natr_data[symbol]
 
+
         if natr is not None and natr >= natr_threshold:
             result.append({
                 "symbol": symbol,
@@ -98,7 +99,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # 6. Формируем сообщение
     now = datetime.now().strftime("%d.%m.%Y %H:%M")
     msg_lines = [f"📊 <b>Инплей</b> ({now})", ""]
-
 
     for item in result:
         emoji = get_trend_emoji(item["price_change"])
@@ -141,11 +141,8 @@ async def main():
     app.add_handler(CommandHandler("start", start))
     logger.info("Бот запущен. Ожидает команд...")
 
-
-    # Запускаем polling в текущем цикле событий (без asyncio.run())
-    await app.start_polling()
-    await app.idle()  # Ждём завершения (например, при SIGTERM)
+    # ЗАПУСКАЕМ polling (без await! Это блокирующий вызов)
+    app.run_polling()
 
 if __name__ == "__main__":
-    # Запуск main() в текущем цикле событий
     asyncio.run(main())
