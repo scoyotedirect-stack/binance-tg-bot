@@ -1,8 +1,6 @@
 import os
 import logging
-import asyncio
 from datetime import datetime
-from dotenv import load_dotenv
 import httpx
 from telegram import Update
 from telegram.constants import ParseMode
@@ -12,15 +10,16 @@ from telegram.ext import Application, CommandHandler, ContextTypes
 from scraper import get_filtered_symbols
 from natr_calculator import get_natr_for_symbols
 
-# Загрузка переменных окружения
-load_dotenv()
 
 # Настройка логирования
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 logger = logging.getLogger(__name__)
 
 def format_volume(volume):
-    """Форматирует объём в читаемый вид с символом $ (1.2B$, 850M$ и т.п.)."""
+    """Форматирует объём в читаемый вид с символом $."""
     if volume < 1_000_000:
         return f"${volume:,.0f}"
     elif volume < 1_000_000_000:
@@ -28,9 +27,11 @@ def format_volume(volume):
     else:
         return f"${volume / 1_000_000_000:.1f}B$"
 
+
 def get_trend_emoji(change):
     """Возвращает эмодзи в зависимости от изменения цены."""
     return "🟢" if change >= 0 else "🔴"
+
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logger.info(f"Получен /start от {update.effective_user.id}")
@@ -66,7 +67,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # 4. Фильтруем и собираем результат
     result = []
-    natr_threshold = float(os.getenv("NATR_THRESHOLD"))
+    natr_threshold = float(os.environ["NATR_THRESHOLD"])  # Обязательная переменная
+
 
     for symbol in natr_data:
         ticker = ticker_data.get(symbol)
@@ -76,6 +78,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         volume_usd = float(ticker["lastPrice"]) * float(ticker["volume"])
         price_change = float(ticker["priceChangePercent"])
         natr = natr_data[symbol]
+
 
         if natr is not None and natr >= natr_threshold:
             result.append({
@@ -93,12 +96,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     result.sort(key=lambda x: x["volume_usd"], reverse=True)
 
 
-    # 6. Формируем сообщение в новом формате
+    # 6. Формируем сообщение
     now = datetime.now().strftime("%d.%m.%Y %H:%M")
-    msg_lines = [
-        f"📊 <b>Инплей</b> ({now})",
-        ""
-    ]
+    msg_lines = [f"📊 <b>Инплей</b> ({now})", ""]
+
 
     for item in result:
         emoji = get_trend_emoji(item["price_change"])
@@ -114,7 +115,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     message = "\n".join(msg_lines)
 
-    # 7. Отправляем ответ (с разбивкой, если сообщение слишком длинное)
+
+    # 7. Отправляем ответ
     if len(message) > 4096:
         parts = [message[i:i+4096] for i in range(0, len(message), 4096)]
         for part in parts:
@@ -124,31 +126,21 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 def main():
-    token = os.getenv("TELEGRAM_BOT_TOKEN")
-    if not token:
-        logger.error("TELEGRAM_BOT_TOKEN не найден в .env")
-        return
-
-    # Явно указываем ProactorEventLoop для Windows
-    asyncio.set_event_loop(asyncio.ProactorEventLoop())
-    loop = asyncio.get_event_loop()
+    # Получаем токен (обязательно!)
+    token = os.environ["TELEGRAM_BOT_TOKEN"]
 
     app = Application.builder().token(token).build()
 
-    # Удаляем webhook (синхронный вызов через loop.run_until_complete)
     try:
-        loop.run_until_complete(app.bot.delete_webhook())
+        app.bot.delete_webhook()
     except Exception as e:
         logger.warning(f"Не удалось удалить webhook: {e}")
+
 
     app.add_handler(CommandHandler("start", start))
     logger.info("Бот запущен. Ожидает команд...")
 
-    # Запуск polling без asyncio.run()
-    try:
-        app.run_polling()
-    except (KeyboardInterrupt, SystemExit):
-        pass
+    app.run_polling()
 
 if __name__ == "__main__":
     main()

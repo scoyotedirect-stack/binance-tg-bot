@@ -1,8 +1,5 @@
 import requests
 import os
-from dotenv import load_dotenv
-
-load_dotenv()
 
 def get_filtered_symbols():
     try:
@@ -13,9 +10,9 @@ def get_filtered_symbols():
         volume_response.raise_for_status()
         volume_data = volume_response.json()
 
-        min_volume = int(os.getenv("MIN_VOLUME"))
-        max_volume = int(os.getenv("MAX_VOLUME"))
-        excluded_symbols = set(os.getenv("EXCLUDED_SYMBOLS").split(","))
+        min_volume = int(os.environ["MIN_VOLUME"])
+        max_volume = int(os.environ["MAX_VOLUME"])
+        excluded_symbols = set(os.environ["EXCLUDED_SYMBOLS"].split(","))
 
         filtered_symbols = []
         for ticker in volume_data:
