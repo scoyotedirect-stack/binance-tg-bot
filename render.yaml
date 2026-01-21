@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: binance-tg-bot
+    plan: free  # бесплатный тариф (750 часов/мес)
+    envVars:
+      - key: TELEGRAM_BOT_TOKEN
+        fromGroup: bot-secrets
+      - key: MIN_VOLUME
+        value: "150000000"
+      - key: MAX_VOLUME
+        value: "7000000000"
+      - key: NATR_THRESHOLD
+        value: "1"
+      - key: EXCLUDED_SYMBOLS
+        value: "ETHUSDT,BTCUSDT,SOLUSDT,XRPUSDT,BNBUSDT,DOGEUSDT,HYPEUSDT,1000PEPEUSDT,SUIUSDT,ADAUSDT,LTCUSDT,LINKUSDT,BNXUSDT"
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "python binance_tg_bot.py"
+    region: frankfurt  # или другой ближайший к вам

@@ -1,0 +1,7 @@
+
+python-telegram-bot>=20.0
+httpx
+aiohttp
+numpy
+python-dotenv
+requests
