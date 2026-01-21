@@ -130,7 +130,7 @@ async def main():
     app = Application.builder().token(token).build()
 
     try:
-        await app.bot.delete_webhook()  # Теперь можно использовать await
+        await app.bot.delete_webhook()
     except Exception as e:
         logger.warning(f"Не удалось удалить webhook: {e}")
 
@@ -138,7 +138,16 @@ async def main():
     logger.info("Бот запущен. Ожидает команд...")
 
     # Запускаем polling (блокирующий вызов)
-    app.run_polling()
+    await app.run_polling()
 
 if __name__ == "__main__":
-    asyncio.run(main())  # Запускаем main() через asyncio.run()
+    # Получаем текущий цикл событий
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    
+    try:
+        loop.run_until_complete(main())
+    except KeyboardInterrupt:
+        logger.info("Бот остановлен вручную.")
+    finally:
+        loop.close()
