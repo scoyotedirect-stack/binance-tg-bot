@@ -1,6 +1,5 @@
 import os
 import logging
-import asyncio
 import signal
 import sys
 from datetime import datetime
@@ -12,6 +11,7 @@ from telegram.ext import Application, CommandHandler, ContextTypes
 # Импорты из локальных модулей
 from scraper import get_filtered_symbols
 from natr_calculator import get_natr_for_symbols
+
 
 # Настройка логирования
 logging.basicConfig(
@@ -69,7 +69,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     result = []
     natr_threshold = float(os.environ["NATR_THRESHOLD"])
 
-
     for symbol in natr_data:
         ticker = ticker_data.get(symbol)
         if not ticker:
@@ -78,7 +77,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         volume_usd = float(ticker["lastPrice"]) * float(ticker["volume"])
         price_change = float(ticker["priceChangePercent"])
         natr = natr_data[symbol]
-
 
         if natr is not None and natr >= natr_threshold:
             result.append({
@@ -95,10 +93,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # 5. Сортируем по объёму
     result.sort(key=lambda x: x["volume_usd"], reverse=True)
 
-
     # 6. Формируем сообщение
     now = datetime.now().strftime("%d.%m.%Y %H:%M")
     msg_lines = [f"📊 <b>Инплей</b> ({now})", ""]
+
 
     for item in result:
         emoji = get_trend_emoji(item["price_change"])
@@ -121,14 +119,15 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         await update.message.reply_text(message, parse_mode=ParseMode.HTML)
 
-async def main():
-    # Обработчик сигналов (для корректного завершения)
-    def signal_handler(signum, frame):
-        logger.info(f"Получен сигнал {signum}. Остановка бота...")
-        sys.exit(0)
+def signal_handler(signum, frame):
+    logger.info(f"Получен сигнал {signum}. Остановка бота...")
+    sys.exit(0)
 
+def main():
+    # Обработчик сигналов
     signal.signal(signal.SIGTERM, signal_handler)
     signal.signal(signal.SIGINT, signal_handler)
+
 
     token = os.environ["TELEGRAM_BOT_TOKEN"]
     app = Application.builder().token(token).build()
@@ -141,8 +140,8 @@ async def main():
     app.add_handler(CommandHandler("start", start))
     logger.info("Бот запущен. Ожидает команд...")
 
-    # ЗАПУСКАЕМ polling (без await! Это блокирующий вызов)
+    # ЗАПУСКАЕМ polling (без asyncio.run!)
     app.run_polling()
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()  # Вызываем main() напрямую, без asyncio.run()
