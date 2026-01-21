@@ -6,10 +6,10 @@ from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import Application, CommandHandler, ContextTypes
 
+
 # Импорты из локальных модулей
 from scraper import get_filtered_symbols
 from natr_calculator import get_natr_for_symbols
-
 
 # Настройка логирования
 logging.basicConfig(
@@ -17,6 +17,7 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
 
 def format_volume(volume):
     """Форматирует объём в читаемый вид с символом $."""
@@ -27,11 +28,9 @@ def format_volume(volume):
     else:
         return f"${volume / 1_000_000_000:.1f}B$"
 
-
 def get_trend_emoji(change):
     """Возвращает эмодзи в зависимости от изменения цены."""
     return "🟢" if change >= 0 else "🔴"
-
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logger.info(f"Получен /start от {update.effective_user.id}")
@@ -131,6 +130,7 @@ def main():
 
     app = Application.builder().token(token).build()
 
+
     try:
         app.bot.delete_webhook()
     except Exception as e:
@@ -139,6 +139,10 @@ def main():
 
     app.add_handler(CommandHandler("start", start))
     logger.info("Бот запущен. Ожидает команд...")
+
+
+    # УБРАТЬ ЭТУ СТРОКУ ИЛИ ЗАКОММЕНТИРОВАТЬ:
+    # asyncio.set_event_loop(asyncio.ProactorEventLoop())
 
     app.run_polling()
 
