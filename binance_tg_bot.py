@@ -124,20 +124,19 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(message, parse_mode=ParseMode.HTML)
 
 
-def main():
+async def main():
     token = os.environ["TELEGRAM_BOT_TOKEN"]
 
     app = Application.builder().token(token).build()
 
     try:
-        app.bot.delete_webhook()
+        await app.bot.delete_webhook()  # ← ДОБАВЛЕН await!
     except Exception as e:
         logger.warning(f"Не удалось удалить webhook: {e}")
 
     app.add_handler(CommandHandler("start", start))
     logger.info("Бот запущен. Ожидает команд...")
 
-    # asyncio.set_event_loop(asyncio.ProactorEventLoop())  # ← УБРАТЬ!
 
     app.run_polling()
 
