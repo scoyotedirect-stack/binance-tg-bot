@@ -1,5 +1,6 @@
 import os
 import logging
+import asyncio
 import signal
 import sys
 from datetime import datetime
@@ -11,7 +12,6 @@ from telegram.ext import Application, CommandHandler, ContextTypes
 # Импорты из локальных модулей
 from scraper import get_filtered_symbols
 from natr_calculator import get_natr_for_symbols
-
 
 # Настройка логирования
 logging.basicConfig(
@@ -35,7 +35,6 @@ def get_trend_emoji(change):
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logger.info(f"Получен /start от {update.effective_user.id}")
-
 
     # 1. Получаем отфильтрованные символы
     symbols = get_filtered_symbols()
@@ -97,7 +96,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     now = datetime.now().strftime("%d.%m.%Y %H:%M")
     msg_lines = [f"📊 <b>Инплей</b> ({now})", ""]
 
-
     for item in result:
         emoji = get_trend_emoji(item["price_change"])
         change_sign = "+" if item["price_change"] >= 0 else ""
@@ -123,25 +121,24 @@ def signal_handler(signum, frame):
     logger.info(f"Получен сигнал {signum}. Остановка бота...")
     sys.exit(0)
 
-def main():
+async def main():
     # Обработчик сигналов
     signal.signal(signal.SIGTERM, signal_handler)
     signal.signal(signal.SIGINT, signal_handler)
-
 
     token = os.environ["TELEGRAM_BOT_TOKEN"]
     app = Application.builder().token(token).build()
 
     try:
-        await app.bot.delete_webhook()
+        await app.bot.delete_webhook()  # Теперь можно использовать await
     except Exception as e:
         logger.warning(f"Не удалось удалить webhook: {e}")
 
     app.add_handler(CommandHandler("start", start))
     logger.info("Бот запущен. Ожидает команд...")
 
-    # ЗАПУСКАЕМ polling (без asyncio.run!)
+    # Запускаем polling (блокирующий вызов)
     app.run_polling()
 
 if __name__ == "__main__":
-    main()  # Вызываем main() напрямую, без asyncio.run()
+    asyncio.run(main())  # Запускаем main() через asyncio.run()
