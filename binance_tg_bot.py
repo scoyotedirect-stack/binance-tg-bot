@@ -1,14 +1,13 @@
 import os
 import logging
+import asyncio
 import signal
 import sys
-import asyncio  # ОБЯЗАТЕЛЬНО: для asyncio.run()
 from datetime import datetime
 import httpx
 from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import Application, CommandHandler, ContextTypes
-
 
 # Импорты из локальных модулей
 from scraper import get_filtered_symbols
@@ -29,7 +28,6 @@ def format_volume(volume):
         return f"${volume / 1_000_000:.1f}M$"
     else:
         return f"${volume / 1_000_000_000:.1f}B$"
-
 
 def get_trend_emoji(change):
     """Возвращает эмодзи в зависимости от изменения цены."""
@@ -69,7 +67,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # 4. Фильтруем и собираем результат
     result = []
-    natr_threshold = float(os.environ["NATR_THRESHOLD"])  # Обязательная переменная
+    natr_threshold = float(os.environ["NATR_THRESHOLD"])
 
 
     for symbol in natr_data:
@@ -80,7 +78,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         volume_usd = float(ticker["lastPrice"]) * float(ticker["volume"])
         price_change = float(ticker["priceChangePercent"])
         natr = natr_data[symbol]
-
 
         if natr is not None and natr >= natr_threshold:
             result.append({
@@ -93,7 +90,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not result:
         await update.message.reply_text(f"❌ Нет пар с NATR ≥ {natr_threshold}%.")
         return
-
 
     # 5. Сортируем по объёму
     result.sort(key=lambda x: x["volume_usd"], reverse=True)
@@ -115,9 +111,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         msg_lines.append(line)
 
-
     message = "\n".join(msg_lines)
-
 
     # 7. Отправляем ответ
     if len(message) > 4096:
@@ -127,13 +121,12 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         await update.message.reply_text(message, parse_mode=ParseMode.HTML)
 
-def signal_handler(signum, frame):
-    """Обработчик сигналов завершения работы."""
-    logger.info(f"Получен сигнал {signum}. Остановка бота...")
-    sys.exit(0)
-
 async def main():
-    # Регистрируем обработчики сигналов
+    # Обработчик сигналов (для корректного завершения)
+    def signal_handler(signum, frame):
+        logger.info(f"Получен сигнал {signum}. Остановка бота...")
+        sys.exit(0)
+
     signal.signal(signal.SIGTERM, signal_handler)
     signal.signal(signal.SIGINT, signal_handler)
 
@@ -148,8 +141,11 @@ async def main():
     app.add_handler(CommandHandler("start", start))
     logger.info("Бот запущен. Ожидает команд...")
 
-    # Запускаем polling (это блокирующий вызов, но внутри asyncio)
-    await app.run_polling()  # ← ВАЖНО: теперь с await!
+
+    # Запускаем polling в текущем цикле событий (без asyncio.run())
+    await app.start_polling()
+    await app.idle()  # Ждём завершения (например, при SIGTERM)
 
 if __name__ == "__main__":
-    asyncio.run(main())  # ← ЗАПУСКАЕМ main() через asyncio.run()
+    # Запуск main() в текущем цикле событий
+    asyncio.run(main())
