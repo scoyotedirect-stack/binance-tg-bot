@@ -1,3 +1,4 @@
+import asyncio  # ОБЯЗАТЕЛЬНО: для asyncio.run()
 import os
 import logging
 from datetime import datetime
@@ -5,7 +6,6 @@ import httpx
 from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import Application, CommandHandler, ContextTypes
-
 
 # Импорты из локальных модулей
 from scraper import get_filtered_symbols
@@ -17,7 +17,6 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
-
 
 def format_volume(volume):
     """Форматирует объём в читаемый вид с символом $."""
@@ -34,7 +33,6 @@ def get_trend_emoji(change):
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logger.info(f"Получен /start от {update.effective_user.id}")
-
 
     # 1. Получаем отфильтрованные символы
     symbols = get_filtered_symbols()
@@ -68,7 +66,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     result = []
     natr_threshold = float(os.environ["NATR_THRESHOLD"])  # Обязательная переменная
 
-
     for symbol in natr_data:
         ticker = ticker_data.get(symbol)
         if not ticker:
@@ -77,7 +74,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         volume_usd = float(ticker["lastPrice"]) * float(ticker["volume"])
         price_change = float(ticker["priceChangePercent"])
         natr = natr_data[symbol]
-
 
         if natr is not None and natr >= natr_threshold:
             result.append({
@@ -94,11 +90,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # 5. Сортируем по объёму
     result.sort(key=lambda x: x["volume_usd"], reverse=True)
 
-
     # 6. Формируем сообщение
     now = datetime.now().strftime("%d.%m.%Y %H:%M")
     msg_lines = [f"📊 <b>Инплей</b> ({now})", ""]
-
 
     for item in result:
         emoji = get_trend_emoji(item["price_change"])
@@ -111,9 +105,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         msg_lines.append(line)
 
-
     message = "\n".join(msg_lines)
-
 
     # 7. Отправляем ответ
     if len(message) > 4096:
@@ -122,7 +114,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text(part, parse_mode=ParseMode.HTML)
     else:
         await update.message.reply_text(message, parse_mode=ParseMode.HTML)
-
 
 async def main():
     token = os.environ["TELEGRAM_BOT_TOKEN"]
@@ -137,10 +128,7 @@ async def main():
     app.add_handler(CommandHandler("start", start))
     logger.info("Бот запущен. Ожидает команд...")
 
-    app.run_polling()
+    await app.run_polling()  # ← await обязателен!
 
 if __name__ == "__main__":
-    asyncio.run(main())  # ← Ключевое изменение!
-
-if __name__ == "__main__":
-    main()
+    asyncio.run(main())  # ← Правильный запуск асинхронной main()
