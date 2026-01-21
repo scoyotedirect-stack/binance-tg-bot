@@ -130,15 +130,17 @@ async def main():
     app = Application.builder().token(token).build()
 
     try:
-        await app.bot.delete_webhook()  # ← ДОБАВЛЕН await!
+        await app.bot.delete_webhook()
     except Exception as e:
         logger.warning(f"Не удалось удалить webhook: {e}")
 
     app.add_handler(CommandHandler("start", start))
     logger.info("Бот запущен. Ожидает команд...")
 
-
     app.run_polling()
+
+if __name__ == "__main__":
+    asyncio.run(main())  # ← Ключевое изменение!
 
 if __name__ == "__main__":
     main()
